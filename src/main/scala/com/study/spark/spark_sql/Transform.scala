@@ -1,15 +1,17 @@
 package com.study.spark.spark_sql
 
+import com.study.spark.spark_sql.models.User
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 
 /**
-  * RDD\DF\DS三者间的转换
+  * RDD\DF\DS三者间的转换:
+  * RDD -> DF
+  * DF -> DS
+  * DS -> DF
+  * DF -> RDD
   */
-
-
-case class User(id: Int, name: String, age: Int)
 
 object Transform {
 
@@ -19,18 +21,25 @@ object Transform {
       .setMaster("local[*]")
       .setAppName("Transform")
 
-    // 初始化spark
-    val spark: SparkSession = SparkSession.builder()
-      .config(config)
-      .getOrCreate()
+    // 初始化spark-session、spark-context
+    val spark: SparkSession = SparkSession.builder().config(config).getOrCreate()
+    val sc: SparkContext = spark.sparkContext
+    import spark.implicits._
 
     // 创建RDD
-    val sc: SparkContext = spark.sparkContext
-    val rdd: RDD[(Int, String, Int)] = sc.makeRDD(Array((1, "zhangsan", 20), (2, "lisi", 30), (3, "wangwu", 40)))
+    val rdd: RDD[(Int, String, Int)] = sc.makeRDD(Array((1, "zhangsan", 20), (2, "lisi", 30), (3, "wangwu", 40), (4, "zhaoliu", 3)))
 
-    import spark.implicits._
-    // RDD转DF
-    val df: DataFrame = rdd.toDF("id", "name", "age")
+
+    // RDD -> DF TODO:[传说中的两种方式：编程、反射]
+    val df: DataFrame = rdd.toDF("id", "name", "age") // 一般直接使用反射转换的方式
+
+    // RDD -> DS
+    val userRdd: RDD[User] = rdd.map {
+      case (id, name, age) => {
+        User(id, name, age)
+      }
+    }
+    val userDs: Dataset[User] = userRdd.toDS()
 
     // DF转DS
     val ds: Dataset[User] = df.as[User]
@@ -40,6 +49,10 @@ object Transform {
 
     // DF转RDD
     val rdd_1: RDD[Row] = df_1.rdd
+
+    // DS -> RDD
+    val rdd_2: RDD[User] = userDs.rdd
+    rdd_2.foreach(println)
 
     rdd_1.foreach { row =>
       // 可以通过索引访问row的数据

@@ -7,7 +7,7 @@ package com.study.spark.spark_core
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
-object RddOperations {
+object RddTransformOperation {
 
   def main(args: Array[String]): Unit = {
 
@@ -18,6 +18,9 @@ object RddOperations {
     val listRdd: RDD[Int] = sc.makeRDD(1 to 10)
     val listRdd2: RDD[List[Int]] = sc.makeRDD(Array(List(1, 2), List(3, 4), List(5, 6)))
 
+    // =============================================
+    // =============================================
+    // value类型
     // map算子
     val mapRdd: RDD[Int] = listRdd.map(_ * 2)
     mapRdd.foreach(println)
@@ -90,6 +93,8 @@ object RddOperations {
     val res: Array[Int] = rdd8.sortBy(x => x).collect()
     println(res.mkString(","))
 
+    // =============================================
+    // =============================================
     // 双value类型
     val rdd21: RDD[Int] = sc.makeRDD(1 to 10)
     val rdd22: RDD[Int] = sc.makeRDD(5 to 14)
@@ -118,7 +123,9 @@ object RddOperations {
     val res13: String = zipRdd.collect().mkString(",")
     println("zip res: " + res13)
 
-    // TODO：kv类型
+    // =============================================
+    // =============================================
+    // kv类型
     // partitionBy
 
 

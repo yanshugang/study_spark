@@ -14,7 +14,7 @@ object KafkaSource {
     val config: SparkConf = new SparkConf().setMaster("local[*]").setAppName("KafkaSource")
     val ssc = new StreamingContext(config, Seconds(5))
 
-    // TODO：kafka接口：2181和9092的区别
+    // 初始化kafka接收器。TODO：优化传参
     val kafkaDStream: ReceiverInputDStream[(String, String)] = KafkaUtils.createStream(ssc, "localhost:2181", "spark", Map("source" -> 3))
 
     val wordCount: DStream[(String, Int)] = kafkaDStream.flatMap(kafkaMsg => kafkaMsg._2.split(" ")).map((_, 1)).reduceByKey(_ + _)
