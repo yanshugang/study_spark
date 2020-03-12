@@ -13,7 +13,7 @@ import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import scala.collection.mutable
 
 /**
-  * 需求一：统计session占比。
+  * 需求一：各个范围Session步长、访问时长占比统计。
   * 统计出符合筛选条件的session中，
   * 访问时长在1s~3s、4s~6s、7s~9s、10s~30s、30s~60s、1m~3m、3m~10m、10m~30m、30m，
   * 访问步长在1_3、4_6、…以上各个范围内的各种session的占比。
@@ -332,12 +332,15 @@ object SessionRatio {
     // step-3: 聚合用户行为信息，然后关联用户表
     val sessionId2FullInfoRDD: RDD[(String, String)] = getSessionFullInfo(spark, sessionId2GroupActionRDD)
 
-    // step-4: 自定义累加器。
+    // step-4:
+    // 初始化一个自定义的累加器
     val sessionAcc = new SessionAccumulator
+    // 注册累加器
     spark.sparkContext.register(sessionAcc)
 
     // step-5: 根据筛选条件过滤数据，更新累加器。
     val sessionId2FilteredRDD: RDD[(String, String)] = getSessionFilteredRDD(taskParam, sessionId2FullInfoRDD, sessionAcc)
+
     // 需要添加一个action算子，触发计算
     sessionId2FilteredRDD.foreach(println)
 
