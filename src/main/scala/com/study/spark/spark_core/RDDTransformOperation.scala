@@ -7,7 +7,7 @@ package com.study.spark.spark_core
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
-object RddTransformOperation {
+object RDDTransformOperation {
 
   def main(args: Array[String]): Unit = {
 

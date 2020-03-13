@@ -10,7 +10,7 @@ import scala.util.parsing.json.JSON
   * 如果JSON文件中每一行就是一个JSON记录，那么可以通过将JSON文件当做文本文件来读取，然后利用相关的JSON库对每一条数据进行JSON解析。
   * 更推荐采用SparkSQL处理JSON文件。
   */
-object RddReadJsonFile {
+object RDDReadJsonFile {
   def main(args: Array[String]): Unit = {
     val config: SparkConf = new SparkConf().setMaster("local[*]").setAppName("RddReadJsonFile")
     val sc = new SparkContext(config)

@@ -16,19 +16,14 @@ import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 object Transform {
 
   def main(args: Array[String]): Unit = {
-    // 配置信息
-    val config: SparkConf = new SparkConf()
-      .setMaster("local[*]")
-      .setAppName("Transform")
 
-    // 初始化spark-session、spark-context
+    val config: SparkConf = new SparkConf().setMaster("local[*]").setAppName("Transform")
     val spark: SparkSession = SparkSession.builder().config(config).getOrCreate()
     val sc: SparkContext = spark.sparkContext
     import spark.implicits._
 
     // 创建RDD
     val rdd: RDD[(Int, String, Int)] = sc.makeRDD(Array((1, "zhangsan", 20), (2, "lisi", 30), (3, "wangwu", 40), (4, "zhaoliu", 3)))
-
 
     // RDD -> DF TODO:[传说中的两种方式：编程、反射]
     val df: DataFrame = rdd.toDF("id", "name", "age") // 一般直接使用反射转换的方式
@@ -52,7 +47,6 @@ object Transform {
 
     // DS -> RDD
     val rdd_2: RDD[User] = userDs.rdd
-    rdd_2.foreach(println)
 
     rdd_1.foreach { row =>
       // 可以通过索引访问row的数据
