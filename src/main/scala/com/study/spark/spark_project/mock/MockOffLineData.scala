@@ -30,8 +30,8 @@ object MockOffLineData {
     val random = new Random()
 
     // 一共100个用户（有重复）
-    for (i <- 0 to 100) {
-      val userid: Int = random.nextInt(100)
+    for (i <- 0 to 1000) {
+      val userid: Int = random.nextInt(1000)
       // 每个用户产生10个session
       for (j <- 0 to 10) {
         // 不可变的，全局的，独一无二的128bit长度的标识符，用于标识一个session，体现一次会话产生的sessionId是独一无二的
@@ -88,7 +88,7 @@ object MockOffLineData {
     val random = new Random()
 
     // 随机产生100个用户的个人信息
-    for (i <- 0 to 100) {
+    for (i <- 0 to 1000) {
       val userid: Int = i
       val username: String = "user" + i
       val name: String = "name" + i

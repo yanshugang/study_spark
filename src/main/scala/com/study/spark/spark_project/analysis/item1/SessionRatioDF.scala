@@ -1,5 +1,7 @@
 package com.study.spark.spark_project.analysis.item1
 
+import java.text.SimpleDateFormat
+
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
@@ -17,34 +19,123 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
   */
 object SessionRatioDF {
 
+  /**
+    * 时间做差
+    *
+    * @param max
+    * @param min
+    * @return
+    */
+  def getVisitLength(startTime: String, endTime: String): String = {
+    val dataFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+    val maxTime = dataFormat.parse(endTime)
+    val minTime = dataFormat.parse(startTime)
+    val between = (maxTime.getTime - minTime.getTime) / 1000
+    between.toString
+  }
+
   def main(args: Array[String]): Unit = {
 
     val config: SparkConf = new SparkConf().setMaster("local[*]").setAppName("SessionRatioDF")
     val spark: SparkSession = SparkSession.builder().config(config).enableHiveSupport().getOrCreate()
 
-    // 获取数据。可修改sql语句实现对数据的过滤。
-    val actionSql: String = "select * from user_visit_action where date='2020-01-16' "
-    val userSql: String = "select * from user_info"
+    // 获取用户行为数据。
+    val actionSql: String = "select * from user_visit_action where date='2020-03-15' "
     val actionDF: DataFrame = spark.sql(actionSql)
-    val userDF: DataFrame = spark.sql(userSql)
 
-    actionDF.show(20, truncate = false)
-    userDF.show(20, truncate = false)
-
-    // 统计：每个session的时长和步长
+    // 按照session聚合数据
+    // session_id\search_keywords\click_category_id\visit_length\step_length\start_time
     actionDF.createOrReplaceTempView("action")
+
+    // 自定义函数
+    spark.udf.register("visitLenthSecond", (startTime: String, endTime: String) => getVisitLength(startTime, endTime))
+
     val sql: String =
       """
         |select user_id, session_id,
-        |date_format(max(action_time), "yyyy-MM-dd'T'HH:mm:ss") as max_action_time,
-        |date_format(min(action_time), "yyyy-MM-dd'T'HH:mm:ss") as min_action_time,
-        |count(session_id) as sl
-        |from action group by session_id, user_id
+        |concat_ws("|", collect_set(search_keyword)) as search_keywords,
+        |concat_ws("|", collect_set(click_category_id)) as click_category_ids,
+        |visitLenthSecond(min(action_time), max(action_time)) as visit_length,
+        |count(session_id) as step_length,
+        |min(action_time) as start_time
+        |from action
+        |group by session_id, user_id
       """.stripMargin
-    val ratioDF: DataFrame = spark.sql(sql).toDF()
-    // TODO：sql无法实现时间秒级做差。使用df实现。
-    ratioDF.show(30, truncate = false)
+    val ratioDF: DataFrame = spark.sql(sql)
 
+    // 获取用户信息数据
+    val userSql: String = "select * from user_info"
+    val userDF: DataFrame = spark.sql(userSql)
+
+    // 联立user_info表
+    val joinDF = ratioDF.join(userDF, ratioDF("user_id") === userDF("user_id"), "left_outer")
+      .select(ratioDF("session_id"), ratioDF("search_keywords"), ratioDF("click_category_ids"),
+        ratioDF("visit_length"), ratioDF("step_length"), ratioDF("start_time"), userDF("age"),
+        userDF("professional"), userDF("sex"), userDF("city"))
+    joinDF.show(20)
+
+    // 根据条件过滤数据: 主要是针对age\professional\sex\city
+
+    // 统计
+    // 1. 统计访问时长在1s~3s、4s~6s、7s~9s、10s~30s、30s~60s、1m~3m、3m~10m、10m~30m、30m以上各个范围内的 session占比。
+    // 2. 统计访问步长在1~3、4~6、7~9、10~30、30~60、60以上各个范围内的session占比。
+
+    joinDF.createOrReplaceTempView("full_info")
+    val sql_1: String =
+      """
+        |select
+        |session_id,
+        |case
+        |when(visit_length>=1 and visit_length<=3) then "1s~3s"
+        |when(visit_length>=4 and visit_length<=6) then "4s~6s"
+        |when(visit_length>=7 and visit_length<=9) then "7s~9s"
+        |when(visit_length>=10 and visit_length<30) then "10s~30s"
+        |when(visit_length>=30 and visit_length<60) then "30s~60s"
+        |when(visit_length>=60 and visit_length<180) then "1m~3m"
+        |when(visit_length>=180 and visit_length<600) then "3m~10m"
+        |when(visit_length>=600 and visit_length<1800) then "10m~30m"
+        |else "30m以上"
+        |end as visit_length_tag,
+        |case
+        |when(step_length>=1 and step_length<=3) then "1~3"
+        |when(step_length>=4 and step_length<=6) then "4~6"
+        |when(step_length>=7 and step_length<=9) then "7~9"
+        |when(step_length>=10 and step_length<30) then "10~30"
+        |when(step_length>=30 and step_length<60) then "30~60"
+        |else "60以上"
+        |end as step_length_tag
+        |from full_info
+      """.stripMargin
+    val tagDF = spark.sql(sql_1)
+
+    tagDF.show(100, truncate = false)
+
+
+    // 统计比例
+    tagDF.createOrReplaceTempView("tag_table")
+    val ratio_sql_1: String =
+      """
+        |select
+        |visit_length_tag,
+        |count(1) as tag_num
+        |from tag_table
+        |group by visit_length_tag
+        |order by visit_length_tag
+      """.stripMargin
+    val resDF1 = spark.sql(ratio_sql_1)
+    val ratio_sql_2:String =
+      """
+        |select
+        |step_length_tag,
+        |count(1) as tag_num
+        |from tag_table
+        |group by step_length_tag
+        |order by step_length_tag
+      """.stripMargin
+    val resDF2 = spark.sql(ratio_sql_2)
+
+    resDF1.show()
+    resDF2.show()
 
   }
 
