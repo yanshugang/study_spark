@@ -1,6 +1,7 @@
 package com.study.spark.spark_project.analysis.item1
 
 import java.text.SimpleDateFormat
+import java.util.Date
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.{DataFrame, SparkSession}
@@ -22,15 +23,15 @@ object SessionRatioDF {
   /**
     * 时间做差
     *
-    * @param max
-    * @param min
+    * @param startTime session的开始时间
+    * @param endTime   session的结束时间
     * @return
     */
   def getVisitLength(startTime: String, endTime: String): String = {
     val dataFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-    val maxTime = dataFormat.parse(endTime)
-    val minTime = dataFormat.parse(startTime)
-    val between = (maxTime.getTime - minTime.getTime) / 1000
+    val maxTime: Date = dataFormat.parse(endTime)
+    val minTime: Date = dataFormat.parse(startTime)
+    val between: Long = (maxTime.getTime - minTime.getTime) / 1000
     between.toString
   }
 
@@ -68,7 +69,7 @@ object SessionRatioDF {
     val userDF: DataFrame = spark.sql(userSql)
 
     // 联立user_info表
-    val joinDF = ratioDF.join(userDF, ratioDF("user_id") === userDF("user_id"), "left_outer")
+    val joinDF: DataFrame = ratioDF.join(userDF, ratioDF("user_id") === userDF("user_id"), "left_outer")
       .select(ratioDF("session_id"), ratioDF("search_keywords"), ratioDF("click_category_ids"),
         ratioDF("visit_length"), ratioDF("step_length"), ratioDF("start_time"), userDF("age"),
         userDF("professional"), userDF("sex"), userDF("city"))
@@ -106,7 +107,7 @@ object SessionRatioDF {
         |end as step_length_tag
         |from full_info
       """.stripMargin
-    val tagDF = spark.sql(sql_1)
+    val tagDF: DataFrame = spark.sql(sql_1)
 
     tagDF.show(100, truncate = false)
 
@@ -122,8 +123,8 @@ object SessionRatioDF {
         |group by visit_length_tag
         |order by visit_length_tag
       """.stripMargin
-    val resDF1 = spark.sql(ratio_sql_1)
-    val ratio_sql_2:String =
+    val resDF1: DataFrame = spark.sql(ratio_sql_1)
+    val ratio_sql_2: String =
       """
         |select
         |step_length_tag,
@@ -132,7 +133,7 @@ object SessionRatioDF {
         |group by step_length_tag
         |order by step_length_tag
       """.stripMargin
-    val resDF2 = spark.sql(ratio_sql_2)
+    val resDF2: DataFrame = spark.sql(ratio_sql_2)
 
     resDF1.show()
     resDF2.show()
